@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import getIcon from '../utils/iconUtils';
+import ProjectSelector from './ProjectSelector';
+import { selectAllProjects } from '../store/projectsSlice';
 
-export default function MainFeature({ selectedCategory = 'all', onStatsUpdate }) {
+export default function MainFeature({ selectedCategory = 'all', selectedProject = null, onStatsUpdate }) {
   // State for tasks
   const [tasks, setTasks] = useState(() => {
     const savedTasks = localStorage.getItem('tasks');
@@ -15,7 +18,8 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
         description: 'This is your first task. Try marking it as complete or edit it.', 
         completed: false, 
         createdAt: new Date().toISOString(),
-        dueDate: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
+        dueDate: new Date(Date.now() + 86400000).toISOString(), 
+        projectId: '1', // Default project
         priority: 2,
         category: 'personal'
       }
@@ -27,6 +31,7 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
     title: '',
     description: '',
     dueDate: '',
+    projectId: '',
     priority: 2,
     category: 'personal'
   });
@@ -49,6 +54,9 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
   const ChevronDownIcon = getIcon('ChevronDown');
   const CalendarIcon = getIcon('Calendar');
   const TagIcon = getIcon('Tag');
+  const BriefcaseIcon = getIcon('Briefcase');
+  
+  const projects = useSelector(selectAllProjects);
   
   // Ref for input focus
   const titleInputRef = useRef(null);
@@ -69,14 +77,29 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
   }, [showTaskForm]);
   
   // Filtered tasks based on selected category
-  const filteredTasks = selectedCategory === 'all' 
-    ? tasks 
-    : tasks.filter(task => task.category === selectedCategory);
+  const filteredTasks = tasks.filter(task => {
+    // First filter by category if specified
+    const categoryMatch = selectedCategory === 'all' || task.category === selectedCategory;
+    
+    // Then filter by project if specified
+    const projectMatch = selectedProject === null || task.projectId === selectedProject;
+    
+    // Task must match both filters
+    return categoryMatch && projectMatch;
+  });
+  
+  // Find project for a task
+  const getProjectForTask = (projectId) => projects.find(p => p.id === projectId) || null;
   
   // Handle input change for new task
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewTask(prev => ({ ...prev, [name]: value }));
+  };
+  
+  // Handle project selection for new task
+  const handleProjectSelect = (projectId) => {
+    setNewTask(prev => ({ ...prev, projectId }));
   };
   
   // Add new task
@@ -95,6 +118,7 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
       completed: false,
       createdAt: new Date().toISOString(),
       dueDate: newTask.dueDate ? new Date(newTask.dueDate).toISOString() : null,
+      projectId: newTask.projectId || null,
       priority: parseInt(newTask.priority) || 2,
       category: newTask.category || 'personal'
     };
@@ -104,6 +128,7 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
       title: '',
       description: '',
       dueDate: '',
+      projectId: '',
       priority: 2,
       category: 'personal'
     });
@@ -143,6 +168,11 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
     setEditingTask(prev => ({ ...prev, [name]: value }));
   };
   
+  // Handle project selection for editing task
+  const handleEditProjectSelect = (projectId) => {
+    setEditingTask(prev => ({ ...prev, projectId }));
+  };
+  
   // Save edited task
   const saveEditedTask = () => {
     if (!editingTask.title.trim()) {
@@ -157,6 +187,7 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
           title: editingTask.title.trim(),
           description: editingTask.description.trim(),
           dueDate: editingTask.dueDate ? new Date(editingTask.dueDate).toISOString() : null,
+          projectId: editingTask.projectId,
           priority: parseInt(editingTask.priority) || 2
         } : task
       )
@@ -261,7 +292,7 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
                   ></textarea>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="col-span-1">
                   <div>
                     <label htmlFor="dueDate" className="block text-sm font-medium mb-1">
                       Due Date
@@ -278,7 +309,7 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
                       <CalendarIcon className="absolute top-1/2 transform -translate-y-1/2 left-3 w-4 h-4 text-surface-400" />
                     </div>
                   </div>
-                  
+                  <div className="col-span-1">
                   <div>
                     <label htmlFor="priority" className="block text-sm font-medium mb-1">
                       Priority
@@ -298,7 +329,20 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
                       <FlagIcon className="absolute top-1/2 transform -translate-y-1/2 left-3 w-4 h-4 text-surface-400" />
                     </div>
                   </div>
-                  
+                  <div className="col-span-1">
+                    <label htmlFor="project" className="block text-sm font-medium mb-1">
+                      Project
+                    </label>
+                    <ProjectSelector 
+                      selectedProject={newTask.projectId} 
+                      onProjectSelect={handleProjectSelect} 
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                  <div className="col-span-1">
+                    
                   <div>
                     <label htmlFor="category" className="block text-sm font-medium mb-1">
                       Category
@@ -415,9 +459,9 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
                         ></textarea>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="col-span-1">
                         <div>
-                          <label htmlFor="edit-dueDate" className="block text-sm font-medium mb-1">
+                            Due Date
                             Due Date
                           </label>
                           <div className="relative">
@@ -433,7 +477,7 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
                           </div>
                         </div>
                         
-                        <div>
+                      <div className="col-span-1">
                           <label htmlFor="edit-priority" className="block text-sm font-medium mb-1">
                             Priority
                           </label>
@@ -453,7 +497,20 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
                           </div>
                         </div>
                         
-                        <div>
+                      <div className="col-span-1">
+                        <label htmlFor="edit-project" className="block text-sm font-medium mb-1">
+                          Project
+                        </label>
+                        <ProjectSelector 
+                          selectedProject={editingTask.projectId} 
+                          onProjectSelect={handleEditProjectSelect} 
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-4">
+                      <div className="col-span-1">
+                        
                           <label htmlFor="edit-category" className="block text-sm font-medium mb-1">
                             Category
                           </label>
@@ -500,7 +557,8 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
                         {/* Checkbox */}
                         <button
                           onClick={() => toggleTaskCompletion(task.id)}
-                          className="mt-1 flex-shrink-0 w-6 h-6 rounded-full border-2 border-surface-300 dark:border-surface-600 flex items-center justify-center group-hover:border-primary transition-colors"
+                          className="mt-1 flex-shrink-0 w-6 h-6 rounded-full border-2 border-surface-300 dark:border-surface-600 
+                                    flex items-center justify-center group-hover:border-primary transition-colors"
                           aria-label={task.completed ? "Mark as incomplete" : "Mark as complete"}
                         >
                           {task.completed && (
@@ -511,11 +569,23 @@ export default function MainFeature({ selectedCategory = 'all', onStatsUpdate })
                         {/* Task Content */}
                         <div className="flex-grow min-w-0">
                           <div className="flex flex-wrap items-start justify-between gap-2">
-                            <h3 className={`text-lg font-medium break-words ${
-                              task.completed ? 'line-through text-surface-400 dark:text-surface-500' : ''
-                            }`}>
-                              {task.title}
-                            </h3>
+                            <div>
+                              <h3 className={`text-lg font-medium break-words ${
+                                task.completed ? 'line-through text-surface-400 dark:text-surface-500' : ''
+                              }`}>
+                                {task.title}
+                              </h3>
+                              
+                              {task.projectId && getProjectForTask(task.projectId) && (
+                                <div className="mt-1 flex items-center gap-1.5">
+                                  <span 
+                                    className="w-2.5 h-2.5 rounded-full" 
+                                    style={{ backgroundColor: getProjectForTask(task.projectId).color }}
+                                  ></span>
+                                  <span className="text-xs text-surface-500">{getProjectForTask(task.projectId).name}</span>
+                                </div>
+                              )}
+                            </div>
                             
                             <div className="flex items-center space-x-1">
                               <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getCategoryColor(task.category)}`}>

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Provider } from 'react-redux';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import getIcon from '../utils/iconUtils';
 import MainFeature from '../components/MainFeature';
+import ProjectsList from '../components/ProjectsList';
+import store from '../store';
 
 export default function Home() {
   const [stats, setStats] = useState({
@@ -12,11 +15,13 @@ export default function Home() {
   });
 
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedProject, setSelectedProject] = useState(null);
   
   // Icons
   const CheckIcon = getIcon('CheckCircle2');
   const PendingIcon = getIcon('Clock');
   const TotalIcon = getIcon('ListTodo');
+  const LayoutIcon = getIcon('Layout');
   
   // Animation variants
   const containerVariants = {
@@ -55,88 +60,111 @@ export default function Home() {
     toast.info(`Filtered by ${category === 'all' ? 'all tasks' : category}`);
   };
 
+  // Handle project selection
+  const handleProjectSelect = (projectId) => {
+    setSelectedProject(projectId);
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-8"
-    >
-      <div className="text-center pb-6">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-gradient">Organize Your Tasks</h1>
-        <p className="text-surface-600 dark:text-surface-400 max-w-2xl mx-auto">
-          Create, organize, and track your tasks with our intuitive interface.
-          Stay productive and never miss a deadline again.
-        </p>
-      </div>
-      
-      {/* Stats Section */}
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
+    <Provider store={store}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-8"
       >
-        <motion.div variants={itemVariants} className="card p-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 dark:bg-primary/20 p-3 rounded-lg">
-              <TotalIcon className="w-6 h-6 text-primary" />
+        <div className="text-center pb-6">
+          <h1 className="text-3xl md:text-4xl font-bold mb-2 text-gradient">Organize Your Tasks</h1>
+          <p className="text-surface-600 dark:text-surface-400 max-w-2xl mx-auto">
+            Create, organize, and track your tasks with our intuitive interface.
+            Stay productive and never miss a deadline again.
+          </p>
+        </div>
+        
+        {/* Stats Section */}
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
+        >
+          <motion.div variants={itemVariants} className="card p-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-primary/10 dark:bg-primary/20 p-3 rounded-lg">
+                <TotalIcon className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-surface-500 dark:text-surface-400 text-sm">Total Tasks</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-surface-500 dark:text-surface-400 text-sm">Total Tasks</p>
-              <p className="text-2xl font-bold">{stats.total}</p>
+          </motion.div>
+          
+          <motion.div variants={itemVariants} className="card p-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-secondary/10 dark:bg-secondary/20 p-3 rounded-lg">
+                <CheckIcon className="w-6 h-6 text-secondary" />
+              </div>
+              <div>
+                <p className="text-surface-500 dark:text-surface-400 text-sm">Completed</p>
+                <p className="text-2xl font-bold">{stats.completed}</p>
+              </div>
             </div>
-          </div>
+          </motion.div>
+          
+          <motion.div variants={itemVariants} className="card p-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-accent/10 dark:bg-accent/20 p-3 rounded-lg">
+                <PendingIcon className="w-6 h-6 text-accent" />
+              </div>
+              <div>
+                <p className="text-surface-500 dark:text-surface-400 text-sm">Pending</p>
+                <p className="text-2xl font-bold">{stats.pending}</p>
+              </div>
+            </div>
+          </motion.div>
         </motion.div>
         
-        <motion.div variants={itemVariants} className="card p-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-secondary/10 dark:bg-secondary/20 p-3 rounded-lg">
-              <CheckIcon className="w-6 h-6 text-secondary" />
-            </div>
-            <div>
-              <p className="text-surface-500 dark:text-surface-400 text-sm">Completed</p>
-              <p className="text-2xl font-bold">{stats.completed}</p>
-            </div>
-          </div>
-        </motion.div>
-        
-        <motion.div variants={itemVariants} className="card p-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-accent/10 dark:bg-accent/20 p-3 rounded-lg">
-              <PendingIcon className="w-6 h-6 text-accent" />
-            </div>
-            <div>
-              <p className="text-surface-500 dark:text-surface-400 text-sm">Pending</p>
-              <p className="text-2xl font-bold">{stats.pending}</p>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Projects Sidebar */}
+          <div className="lg:col-span-1">
+            <div className="card p-4">
+              <ProjectsList 
+                onProjectSelect={handleProjectSelect} 
+                selectedProjectId={selectedProject} 
+              />
             </div>
           </div>
-        </motion.div>
+          
+          {/* Main Content */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Category Filters */}
+            <div className="flex flex-wrap gap-2">
+              {['all', 'work', 'personal', 'shopping', 'health'].map((category) => (
+                <button
+                  key={category}
+                  onClick={() => handleCategoryChange(category)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    selectedCategory === category
+                      ? 'bg-primary text-white shadow-md'
+                      : 'bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700'
+                  }`}
+                >
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </button>
+              ))}
+            </div>
+            
+            {/* Main Task Management Feature */}
+            <MainFeature 
+              selectedCategory={selectedCategory}
+              selectedProject={selectedProject}
+              onStatsUpdate={updateStats} 
+            />
+          </div>
+        </div>
       </motion.div>
-      
-      {/* Category Filters */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {['all', 'work', 'personal', 'shopping', 'health'].map((category) => (
-          <button
-            key={category}
-            onClick={() => handleCategoryChange(category)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              selectedCategory === category
-                ? 'bg-primary text-white shadow-md'
-                : 'bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700'
-            }`}
-          >
-            {category.charAt(0).toUpperCase() + category.slice(1)}
-          </button>
-        ))}
-      </div>
-      
-      {/* Main Task Management Feature */}
-      <MainFeature 
-        selectedCategory={selectedCategory} 
-        onStatsUpdate={updateStats} 
-      />
-    </motion.div>
+    </Provider>
   );
 }
